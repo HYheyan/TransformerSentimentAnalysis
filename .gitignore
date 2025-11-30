@@ -1,1 +1,5 @@
 aclImdb/
+__pycache__/
+runs/
+best_transformer_model.pth
+.idea/
