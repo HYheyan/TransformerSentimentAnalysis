@@ -3,3 +3,5 @@ __pycache__/
 runs/
 best_transformer_model.pth
 .idea/
+models/__pycache__/
+utils/__pycache__/

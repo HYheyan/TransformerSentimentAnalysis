@@ -4,7 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d2590197-0b34-4271-bc60-30b998c8ea85" name="更改" comment="" />
+    <list default="true" id="d2590197-0b34-4271-bc60-30b998c8ea85" name="更改" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/best_transformer_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251128-164809/events.out.tfevents.1764319689.hy.24776.0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251128-183244/events.out.tfevents.1764325964.hy.34028.0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251129-163954/events.out.tfevents.1764405594.hy.10220.0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251129-163954/events.out.tfevents.1764405594.hy.12252.0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251129-163954/events.out.tfevents.1764405594.hy.31008.0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251129-163954/events.out.tfevents.1764405594.hy.31088.0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/transformer_sentiment_analysis_20251129-200511/events.out.tfevents.1764417911.hy.27604.0" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
