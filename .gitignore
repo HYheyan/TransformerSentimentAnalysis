@@ -5,5 +5,5 @@ best_transformer_model.pth
 .idea/
 models/__pycache__/
 utils/__pycache__/
-aclImdb.zip
+*.zip
 aclImdb/*
