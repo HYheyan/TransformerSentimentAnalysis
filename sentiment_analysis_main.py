@@ -1,3 +1,6 @@
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
 import time
 import torch
 import torch.nn as nn
@@ -31,12 +34,39 @@ def main():
     train_dataset = TransformerDataset(train_texts, train_labels, tokenizer)
     test_dataset = TransformerDataset(test_texts, test_labels, tokenizer)
     print(f"训练集大小: {len(train_dataset)}, 测试集大小: {len(test_dataset)}")
-    batch_size = 16
+    batch_size = 64  # 序列缩短后，增大batch size以充分利用GPU/内存
     print(f"使用批次大小: {batch_size}")
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # 创建模型实例
+    # 用户自主选择是否启用情感显著性筛选
+    print("\n" + "="*60)
+    print("情感显著性筛选配置")
+    print("="*60)
+    print("1. 启用筛选 - 序列长度从128降至32，加速训练")
+    print("2. 禁用筛选 - 使用完整序列长度128")
+    print("="*60)
+    
+    # 安全的输入处理
+    selective_attention = True  # 默认启用
+    top_k = 32
+    
+    try:
+        import sys
+        if sys.stdin.isatty():  # 检查是否是交互式终端
+            choice = input("请选择 (1/2, 直接回车默认1): ").strip()
+            if choice == '2':
+                selective_attention = False
+                top_k = 128
+                print("已选择: 禁用情感显著性筛选")
+            else:
+                print("已选择: 启用情感显著性筛选（默认）")
+        else:
+            print("非交互模式，使用默认配置：启用情感显著性筛选")
+    except (EOFError, IOError, OSError) as e:
+        print(f"输入读取失败 ({type(e).__name__})，使用默认配置：启用情感显著性筛选")
+    
     model = TransformerTextClassificationModel(
         vocab_size=len(vocab),
         d_model=256,
@@ -44,8 +74,17 @@ def main():
         num_layers=4,
         d_ff=512,
         dropout=0.5,
-        num_classes=2
+        num_classes=2,
+        top_k=top_k,
+        selective_attention=selective_attention
     )
+    
+    print(f"\n配置信息:")
+    print(f"  - 情感显著性筛选: {'启用' if selective_attention else '禁用'}")
+    if selective_attention:
+        print(f"  - 筛选后保留token数: {top_k} (原始序列长度: 128)")
+    else:
+        print(f"  - 使用完整序列长度: 128")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)

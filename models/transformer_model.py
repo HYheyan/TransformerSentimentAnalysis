@@ -122,22 +122,84 @@ class TransformerEncoder(nn.Module):
 
 
 class TransformerTextClassificationModel(nn.Module):
-    """基于Transformer的文本分类模型"""
+    """基于Transformer的文本分类模型（支持情感显著性筛选）"""
     def __init__(self, vocab_size, d_model=512, num_heads=8, num_layers=6, d_ff=2048, 
-                 dropout=0.1, num_classes=2, max_seq_length=128):
+                 dropout=0.1, num_classes=2, max_seq_length=128, top_k=32, selective_attention=True):
         super(TransformerTextClassificationModel, self).__init__()
         self.d_model = d_model
+        self.top_k = top_k  # 筛选后保留的token数量
+        self.selective_attention = selective_attention  # 是否启用显著性筛选
+        
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.positional_encoding = PositionalEncoding(d_model, max_seq_length)
+        
+        # 情感显著性打分网络：轻量级MLP，用于评估每个token的重要性
+        self.saliency_scorer = nn.Sequential(
+            nn.Linear(d_model, d_model // 4),  # 256 -> 64
+            nn.ReLU(),
+            nn.Linear(d_model // 4, 1)         # 64 -> 1
+        )
+        
         self.encoder = TransformerEncoder(num_layers, d_model, num_heads, d_ff, dropout)
         self.fc = nn.Linear(d_model, num_classes)
         self.dropout = nn.Dropout(dropout)
+
+    def selective_attention_forward(self, x, mask=None):
+        """
+        情感显著性筛选：动态选择信息密度最高的K个token
+        
+        Args:
+            x: 输入表征 [batch, seq_len, d_model]（已加位置编码）
+            mask: 注意力掩码 [batch, seq_len]，1表示有效token，0表示PAD
+        
+        Returns:
+            selected_x: 筛选后的token表征 [batch, k, d_model]
+            selected_mask: 筛选后的掩码 [batch, k]
+        """
+        batch_size, seq_len, d_model = x.size()
+        k = min(self.top_k, seq_len)  # 防止k超过序列长度
+        
+        # Step 1: 计算每个token的显著性分数
+        scores = self.saliency_scorer(x).squeeze(-1)  # [batch, seq_len]
+        
+        # Step 2: 强制保留[CLS] token（索引0），将其分数设为极大值
+        scores[:, 0] = 1e9
+        
+        # Step 3: 将PAD位置的分数置为极小值，确保不被选中
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        
+        # Step 4: 选择分数最高的前K个token
+        topk_scores, topk_indices = torch.topk(scores, k, dim=1)  # [batch, k]
+        
+        # Step 5: 根据索引收集选中的token表征
+        # 使用gather需要扩展维度以匹配d_model
+        indices_expanded = topk_indices.unsqueeze(-1).expand(-1, -1, d_model)  # [batch, k, d_model]
+        selected_x = torch.gather(x, 1, indices_expanded)  # [batch, k, d_model]
+        
+        # Step 6: 同步调整mask
+        if mask is not None:
+            selected_mask = torch.gather(mask, 1, topk_indices)  # [batch, k]
+        else:
+            selected_mask = None
+        
+        return selected_x, selected_mask
 
     def forward(self, x, mask=None):
         # 输入嵌入和位置编码
         x = self.embedding(x) * math.sqrt(self.d_model)
         x = self.positional_encoding(x)
         x = self.dropout(x)
+        
+        # ---- 情感显著性筛选 ----
+        if self.selective_attention:
+            # 如果mask为None，创建全1的mask
+            if mask is None:
+                mask = torch.ones(x.size(0), x.size(1), device=x.device, dtype=torch.long)
+            
+            x, mask = self.selective_attention_forward(x, mask)
+        # ---- 筛选结束 ----
+        
         if mask is not None and mask.dim() == 2:
             # mask shape: (batch_size, seq_len) -> (batch_size, 1, seq_len)
             mask = mask.unsqueeze(1)
