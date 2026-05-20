@@ -44,13 +44,13 @@ def main():
     print("\n" + "="*60)
     print("情感显著性筛选配置")
     print("="*60)
-    print("1. 启用筛选 - 序列长度从128降至32，加速训练")
+    print("1. 启用筛选 - 序列长度从128降至64，平衡速度与性能")
     print("2. 禁用筛选 - 使用完整序列长度128")
     print("="*60)
     
     # 安全的输入处理
     selective_attention = True  # 默认启用
-    top_k = 32
+    top_k = 64  # 保留64个token（从32提升到64，平衡速度和性能）
     
     try:
         import sys
@@ -99,7 +99,7 @@ def main():
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
 
     print("\n开始训练模型")
-    epochs = 50  # aclImdb数据集训练50轮
+    epochs = 30  # aclImdb数据集训练30轮
     
     print(f"训练轮数: {epochs}")
     
