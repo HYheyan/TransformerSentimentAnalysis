@@ -1,11 +1,11 @@
 import time
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from models.transformer_model import TransformerTextClassificationModel, train_transformer_model, \
     evaluate_transformer_model, TransformerDataset
-from utils.data_processing import load_aclImdb_dataset
+from utils.data_processing import load_aclImdb_train_test_dataset
 from utils.simple_tokenizer import SimpleVocab, SimpleTokenizer
 
 
@@ -17,27 +17,24 @@ def main():
     log_dir = "runs/transformer_sentiment_analysis_" + time.strftime("%Y%m%d-%H%M%S")
     writer = SummaryWriter(log_dir)
 
-    # 直接加载aclImdb数据集
+    # 直接加载aclImdb数据集（使用train作为训练集，test作为测试集）
     print("正在加载aclImdb数据集")
-    texts, labels = load_aclImdb_dataset("aclImdb")
-    print(f"数据集大小: {len(texts)} 条文本")
+    (train_texts, train_labels), (test_texts, test_labels) = load_aclImdb_train_test_dataset("aclImdb")
     
-    # 创建词汇表和分词器
+    # 创建词汇表和分词器（基于训练集）
     vocab = SimpleVocab()
-    vocab.build_from_texts(texts)
+    vocab.build_from_texts(train_texts)
     tokenizer = SimpleTokenizer(vocab)
     print(f"词汇表大小: {len(vocab)}")
 
-    # 划分训练集和验证集
-    dataset = TransformerDataset(texts, labels, tokenizer)
-    train_size = int(0.8 * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    print(f"训练集大小: {len(train_dataset)}, 验证集大小: {len(val_dataset)}")
+    # 创建训练集和测试集
+    train_dataset = TransformerDataset(train_texts, train_labels, tokenizer)
+    test_dataset = TransformerDataset(test_texts, test_labels, tokenizer)
+    print(f"训练集大小: {len(train_dataset)}, 测试集大小: {len(test_dataset)}")
     batch_size = 16
     print(f"使用批次大小: {batch_size}")
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    val_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # 创建模型实例
     model = TransformerTextClassificationModel(
@@ -49,8 +46,7 @@ def main():
         dropout=0.5,
         num_classes=2
     )
-    
-    # 如果有GPU则使用GPU
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     print(f"模型将使用{device}进行训练")
@@ -97,7 +93,7 @@ def main():
             # 保存最佳模型
             if train_acc > best_train_accuracy:
                 best_train_accuracy = train_acc
-            if val_acc is not None and val_acc > best_val_accuracy:
+            if val_acc > best_val_accuracy:
                 best_val_accuracy = val_acc
                 torch.save(model.state_dict(), 'best_transformer_model.pth')
                 
